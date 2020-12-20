@@ -115,11 +115,15 @@ public class RNFSManager extends ReactContextBaseJavaModule {
     return stream;
   }
 
+  private String getWriteAccessByAPILevel() {
+    return android.os.Build.VERSION.SDK_INT <= android.os.Build.VERSION_CODES.P ? "w" : "rwt";
+  }
+
   private OutputStream getOutputStream(String filepath, boolean append) throws IORejectionException {
     Uri uri = getFileUri(filepath, false);
     OutputStream stream;
     try {
-      stream = reactContext.getContentResolver().openOutputStream(uri, append ? "wa" : "w");
+      stream = reactContext.getContentResolver().openOutputStream(uri, append ? "wa" : getWriteAccessByAPILevel());
     } catch (FileNotFoundException ex) {
       throw new IORejectionException("ENOENT", "ENOENT: " + ex.getMessage() + ", open '" + filepath + "'");
     }
@@ -306,8 +310,11 @@ public class RNFSManager extends ReactContextBaseJavaModule {
   private int getResIdentifier(String filename) {
     String suffix = filename.substring(filename.lastIndexOf(".") + 1);
     String name = filename.substring(0, filename.lastIndexOf("."));
-    Boolean isImage = suffix.equals("png") || suffix.equals("jpg") || suffix.equals("jpeg") || suffix.equals("bmp") || suffix.equals("gif") || suffix.equals("webp") || suffix.equals("psd") || suffix.equals("svg") || suffix.equals("tiff");
-    return getReactApplicationContext().getResources().getIdentifier(name, isImage ? "drawable" : "raw", getReactApplicationContext().getPackageName());
+    Boolean isImage = suffix.equals("png") || suffix.equals("jpg") || suffix.equals("jpeg") || suffix.equals("bmp")
+        || suffix.equals("gif") || suffix.equals("webp") || suffix.equals("psd") || suffix.equals("svg")
+        || suffix.equals("tiff");
+    return getReactApplicationContext().getResources().getIdentifier(name, isImage ? "drawable" : "raw",
+        getReactApplicationContext().getPackageName());
   }
 
   @ReactMethod
@@ -322,7 +329,8 @@ public class RNFSManager extends ReactContextBaseJavaModule {
       algorithms.put("sha384", "SHA-384");
       algorithms.put("sha512", "SHA-512");
 
-      if (!algorithms.containsKey(algorithm)) throw new Exception("Invalid hash algorithm");
+      if (!algorithms.containsKey(algorithm))
+        throw new Exception("Invalid hash algorithm");
 
       File file = new File(filepath);
 
@@ -365,7 +373,7 @@ public class RNFSManager extends ReactContextBaseJavaModule {
       if (!inFile.renameTo(new File(destPath))) {
         new CopyFileTask() {
           @Override
-          protected void onPostExecute (Exception ex) {
+          protected void onPostExecute(Exception ex) {
             if (ex == null) {
               inFile.delete();
               promise.resolve(true);
@@ -376,7 +384,7 @@ public class RNFSManager extends ReactContextBaseJavaModule {
           }
         }.execute(filepath, destPath);
       } else {
-          promise.resolve(true);
+        promise.resolve(true);
       }
     } catch (Exception ex) {
       ex.printStackTrace();
@@ -388,7 +396,7 @@ public class RNFSManager extends ReactContextBaseJavaModule {
   public void copyFile(final String filepath, final String destPath, ReadableMap options, final Promise promise) {
     new CopyFileTask() {
       @Override
-      protected void onPostExecute (Exception ex) {
+      protected void onPostExecute(Exception ex) {
         if (ex == null) {
           promise.resolve(null);
         } else {
@@ -428,7 +436,8 @@ public class RNFSManager extends ReactContextBaseJavaModule {
     try {
       File file = new File(directory);
 
-      if (!file.exists()) throw new Exception("Folder does not exist");
+      if (!file.exists())
+        throw new Exception("Folder does not exist");
 
       File[] files = file.listFiles();
 
@@ -464,7 +473,10 @@ public class RNFSManager extends ReactContextBaseJavaModule {
         WritableMap fileMap = Arguments.createMap();
 
         fileMap.putString("name", childFile);
-        String path = directory.isEmpty() ? childFile : String.format("%s/%s", directory, childFile); // don't allow / at the start when directory is ""
+        String path = directory.isEmpty() ? childFile : String.format("%s/%s", directory, childFile); // don't allow /
+                                                                                                      // at the start
+                                                                                                      // when directory
+                                                                                                      // is ""
         fileMap.putString("path", path);
         int length = 0;
         boolean isDirectory = true;
@@ -476,7 +488,7 @@ public class RNFSManager extends ReactContextBaseJavaModule {
             isDirectory = false;
           }
         } catch (IOException ex) {
-          //.. ah.. is a directory or a compressed file?
+          // .. ah.. is a directory or a compressed file?
           isDirectory = !ex.getMessage().contains("compressed");
         }
         fileMap.putInt("size", length);
@@ -526,7 +538,7 @@ public class RNFSManager extends ReactContextBaseJavaModule {
           return;
         }
       } catch (Exception ignored) {
-        //.. probably not a directory then
+        // .. probably not a directory then
       }
 
       // Attempt to open file (win = exists)
@@ -587,7 +599,8 @@ public class RNFSManager extends ReactContextBaseJavaModule {
       // Success!
       promise.resolve(null);
     } catch (Exception ex) {
-      reject(promise, source, new Exception(String.format("Failed to copy '%s' to %s (%s)", source, destination, ex.getLocalizedMessage())));
+      reject(promise, source, new Exception(
+          String.format("Failed to copy '%s' to %s (%s)", source, destination, ex.getLocalizedMessage())));
     } finally {
       if (in != null) {
         try {
@@ -609,7 +622,8 @@ public class RNFSManager extends ReactContextBaseJavaModule {
     try {
       File file = new File(filepath);
 
-      if (!file.exists()) throw new Exception("File does not exist");
+      if (!file.exists())
+        throw new Exception("File does not exist");
 
       file.setReadable(readable, ownerOnly);
 
@@ -626,7 +640,8 @@ public class RNFSManager extends ReactContextBaseJavaModule {
       String originalFilepath = getOriginalFilepath(filepath, true);
       File file = new File(originalFilepath);
 
-      if (!file.exists()) throw new Exception("File does not exist");
+      if (!file.exists())
+        throw new Exception("File does not exist");
 
       WritableMap statMap = Arguments.createMap();
       statMap.putInt("ctime", (int) (file.lastModified() / 1000));
@@ -647,7 +662,8 @@ public class RNFSManager extends ReactContextBaseJavaModule {
     try {
       File file = new File(filepath);
 
-      if (!file.exists()) throw new Exception("File does not exist");
+      if (!file.exists())
+        throw new Exception("File does not exist");
 
       DeleteRecursive(file);
 
@@ -677,7 +693,8 @@ public class RNFSManager extends ReactContextBaseJavaModule {
 
       boolean exists = file.exists();
 
-      if (!exists) throw new Exception("Directory could not be created");
+      if (!exists)
+        throw new Exception("Directory could not be created");
 
       promise.resolve(null);
     } catch (Exception ex) {
@@ -687,9 +704,7 @@ public class RNFSManager extends ReactContextBaseJavaModule {
   }
 
   private void sendEvent(ReactContext reactContext, String eventName, WritableMap params) {
-    reactContext
-            .getJSModule(RCTNativeAppEventEmitter.class)
-            .emit(eventName, params);
+    reactContext.getJSModule(RCTNativeAppEventEmitter.class).emit(eventName, params);
   }
 
   @ReactMethod
@@ -723,7 +738,7 @@ public class RNFSManager extends ReactContextBaseJavaModule {
 
             infoMap.putInt("jobId", jobId);
             infoMap.putInt("statusCode", res.statusCode);
-            infoMap.putDouble("bytesWritten", (double)res.bytesWritten);
+            infoMap.putDouble("bytesWritten", (double) res.bytesWritten);
 
             promise.resolve(infoMap);
           } else {
@@ -745,7 +760,7 @@ public class RNFSManager extends ReactContextBaseJavaModule {
 
             data.putInt("jobId", jobId);
             data.putInt("statusCode", statusCode);
-            data.putDouble("contentLength", (double)contentLength);
+            data.putDouble("contentLength", (double) contentLength);
             data.putMap("headers", headersMap);
 
             sendEvent(getReactApplicationContext(), "DownloadBegin", data);
@@ -759,8 +774,8 @@ public class RNFSManager extends ReactContextBaseJavaModule {
             WritableMap data = Arguments.createMap();
 
             data.putInt("jobId", jobId);
-            data.putDouble("contentLength", (double)contentLength);
-            data.putDouble("bytesWritten", (double)bytesWritten);
+            data.putDouble("contentLength", (double) contentLength);
+            data.putDouble("bytesWritten", (double) bytesWritten);
 
             sendEvent(getReactApplicationContext(), "DownloadProgress", data);
           }
@@ -802,11 +817,11 @@ public class RNFSManager extends ReactContextBaseJavaModule {
 
       ArrayList<ReadableMap> fileList = new ArrayList<>();
       UploadParams params = new UploadParams();
-      for(int i =0;i<files.size();i++){
+      for (int i = 0; i < files.size(); i++) {
         fileList.add(files.getMap(i));
       }
       params.src = url;
-      params.files =fileList;
+      params.files = fileList;
       params.headers = headers;
       params.method = method;
       params.fields = fields;
@@ -818,8 +833,8 @@ public class RNFSManager extends ReactContextBaseJavaModule {
 
             infoMap.putInt("jobId", jobId);
             infoMap.putInt("statusCode", res.statusCode);
-            infoMap.putMap("headers",res.headers);
-            infoMap.putString("body",res.body);
+            infoMap.putMap("headers", res.headers);
+            infoMap.putString("body", res.body);
             promise.resolve(infoMap);
           } else {
             reject(promise, options.getString("toUrl"), res.exception);
@@ -841,7 +856,7 @@ public class RNFSManager extends ReactContextBaseJavaModule {
 
       if (hasProgressCallback) {
         params.onUploadProgress = new UploadParams.onUploadProgress() {
-          public void onUploadProgress(int totalBytesExpectedToSend,int totalBytesSent) {
+          public void onUploadProgress(int totalBytesExpectedToSend, int totalBytesSent) {
             WritableMap data = Arguments.createMap();
 
             data.putInt("jobId", jobId);
@@ -903,7 +918,7 @@ public class RNFSManager extends ReactContextBaseJavaModule {
       freeSpace = blockSize * stat.getAvailableBlocks();
     }
     WritableMap info = Arguments.createMap();
-    info.putDouble("totalSpace", (double) totalSpace);   // Int32 too small, must use Double
+    info.putDouble("totalSpace", (double) totalSpace); // Int32 too small, must use Double
     info.putDouble("freeSpace", (double) freeSpace);
     info.putDouble("totalSpaceEx", (double) totalSpaceEx);
     info.putDouble("freeSpaceEx", (double) freeSpaceEx);
@@ -922,7 +937,7 @@ public class RNFSManager extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void getAllExternalFilesDirs(Promise promise){
+  public void getAllExternalFilesDirs(Promise promise) {
     File[] allExternalFilesDirs = this.getReactApplicationContext().getExternalFilesDirs(null);
     WritableArray fs = Arguments.createArray();
     for (File f : allExternalFilesDirs) {
@@ -935,18 +950,17 @@ public class RNFSManager extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void scanFile(String path, final Promise promise) {
-    MediaScannerConnection.scanFile(this.getReactApplicationContext(),
-      new String[]{path},
-      null,
-      new MediaScannerConnection.MediaScannerConnectionClient() {
-        @Override
-        public void onMediaScannerConnected() {}
-         @Override
-        public void onScanCompleted(String path, Uri uri) {
-          promise.resolve(path);
-        }
-      }
-    );
+    MediaScannerConnection.scanFile(this.getReactApplicationContext(), new String[] { path }, null,
+        new MediaScannerConnection.MediaScannerConnectionClient() {
+          @Override
+          public void onMediaScannerConnected() {
+          }
+
+          @Override
+          public void onScanCompleted(String path, Uri uri) {
+            promise.resolve(path);
+          }
+        });
   }
 
   private void reject(Promise promise, String filepath, Exception ex) {
@@ -978,9 +992,11 @@ public class RNFSManager extends ReactContextBaseJavaModule {
     constants.put(RNFSDocumentDirectory, 0);
     constants.put(RNFSDocumentDirectoryPath, this.getReactApplicationContext().getFilesDir().getAbsolutePath());
     constants.put(RNFSTemporaryDirectoryPath, this.getReactApplicationContext().getCacheDir().getAbsolutePath());
-    constants.put(RNFSPicturesDirectoryPath, Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath());
+    constants.put(RNFSPicturesDirectoryPath,
+        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath());
     constants.put(RNFSCachesDirectoryPath, this.getReactApplicationContext().getCacheDir().getAbsolutePath());
-    constants.put(RNFSDownloadDirectoryPath, Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath());
+    constants.put(RNFSDownloadDirectoryPath,
+        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath());
     constants.put(RNFSFileTypeRegular, 0);
     constants.put(RNFSFileTypeDirectory, 1);
 
